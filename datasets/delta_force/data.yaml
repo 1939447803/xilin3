@@ -1,0 +1,14 @@
+# 三角洲行动 YOLO 数据集配置
+# 类别请根据实际标注修改
+
+path: .  # 数据集根目录（相对本文件所在目录）
+train: images/train  # 训练集图片
+val: images/val      # 验证集图片
+
+# 类别定义（按实际标注修改）
+names:
+  0: operator_friendly  # 队友
+  1: operator_enemy     # 敌人
+  2: vehicle            # 载具
+  3: soldier            # 小兵
+  4: knocked            # 倒地

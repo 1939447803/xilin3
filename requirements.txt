@@ -1,0 +1,11 @@
+# YOLO 视觉识别
+
+ultralytics>=8.0.0
+gradio>=4.0.0
+
+# 实时屏幕检测 (detect.py)
+dxcam>=0.0.5
+
+# 截图采集工具 (tools/screenshot.py)
+mss>=6.0.0
+pynput>=1.7.0

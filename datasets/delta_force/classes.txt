@@ -1,0 +1,5 @@
+operator_friendly
+operator_enemy
+vehicle
+soldier
+knocked

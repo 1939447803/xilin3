@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 模型权重（大文件，不提交）
+*.pt
+*.onnx
+*.engine
+
+# 训练/运行输出
+runs/
+detections/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
