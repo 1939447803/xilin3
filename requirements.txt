@@ -9,3 +9,10 @@ dxcam>=0.0.5
 # 截图采集工具 (tools/screenshot.py)
 mss>=6.0.0
 pynput>=1.7.0
+
+# ── TensorRT engine 构建（可选，用于极速推理） ──
+# 注意：tensorrt 需通过 NVIDIA 提供的 wheel 单独安装（与 GPU/CUDA 版本匹配），
+# 并确保 nvinfer_10.dll 在 PATH 上（或设置环境变量 TENSORRT_BIN）。
+# 仅用于 `python build_engine.py` 时还需要：
+# onnx
+# onnxslim

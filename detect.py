@@ -12,6 +12,7 @@ import os
 import sys
 import time
 import argparse
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -26,15 +27,63 @@ COLORS = [
 ]
 
 
+def _find_tensorrt_bin():
+    env = os.environ.get("TENSORRT_BIN")
+    if env:
+        return env
+    roots = [Path.cwd(), Path(__file__).resolve().parent.parent]
+    for root in roots:
+        for pat in ("TensorRT-*/**/bin", "TensorRT-*/**/lib"):
+            for d in root.glob(pat):
+                if (d / "nvinfer_10.dll").exists():
+                    return str(d)
+    return None
+
+
+def _setup_tensorrt_path():
+    trt_bin = _find_tensorrt_bin()
+    if trt_bin:
+        paths = os.environ.get("PATH", "").split(os.pathsep)
+        if trt_bin not in paths:
+            os.environ["PATH"] = trt_bin + os.pathsep + os.environ.get("PATH", "")
+    return trt_bin
+
+
+def _tensorrt_available():
+    _setup_tensorrt_path()
+    try:
+        import tensorrt  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def resolve_model(model_arg):
+    """存在同名 .engine 时优先用 TensorRT。返回 (路径, backend)。"""
+    if model_arg.endswith(".engine"):
+        return model_arg, "engine"
+    engine = str(Path(model_arg).with_suffix(".engine"))
+    if _tensorrt_available() and os.path.exists(engine):
+        return engine, "engine"
+    return model_arg, "pt"
+
+
 def detect_live(args):
     print("=" * 50)
     print("YOLO 实时检测")
     print("=" * 50)
 
-    model = YOLO(args.model)
+    model_path, backend = resolve_model(args.model)
+    if backend == "engine":
+        _setup_tensorrt_path()
+        model = YOLO(model_path, task="detect")
+    else:
+        model = YOLO(model_path)
     class_names = model.names if hasattr(model, 'names') else {}
 
-    print(f"  模型: {args.model}")
+    backend_label = "TensorRT (engine)" if backend == "engine" else f"PyTorch ({args.device})"
+    print(f"  模型: {model_path}")
+    print(f"  后端: {backend_label}")
     print(f"  置信度: {args.confidence:.2f}")
     print(f"  跳帧: 每 {args.frame_skip} 帧推理一次")
     print(f"  [q] / [Esc] - 退出  [s] - 截图\n")
@@ -45,8 +94,10 @@ def detect_live(args):
         return
 
     # 预热：跑一次空推理让 CUDA 初始化
-    _ = model(np.zeros((640, 640, 3), dtype=np.uint8), imgsz=args.imgsz,
-              half=True, device=args.device, verbose=False)
+    warm_kwargs = dict(imgsz=args.imgsz, verbose=False)
+    if backend == "pt":
+        warm_kwargs.update(half=True, device=args.device)
+    _ = model(np.zeros((640, 640, 3), dtype=np.uint8), **warm_kwargs)
 
     cv2.namedWindow("YOLO Detection", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("YOLO Detection", 960, 540)
@@ -69,9 +120,11 @@ def detect_live(args):
 
         # 跳帧：只有每隔 frame_skip 帧才推理，其余帧复用上次结果
         if frame_count % args.frame_skip == 0:
-            results = model(frame, imgsz=args.imgsz, conf=args.confidence,
-                            iou=args.iou, device=args.device, half=True,
-                            max_det=args.max_det, verbose=False)
+            infer_kwargs = dict(imgsz=args.imgsz, conf=args.confidence,
+                                iou=args.iou, max_det=args.max_det, verbose=False)
+            if backend == "pt":
+                infer_kwargs.update(half=True, device=args.device)
+            results = model(frame, **infer_kwargs)
             detected_boxes = []
             for r in results:
                 if r.boxes is not None:

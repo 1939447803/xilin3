@@ -27,8 +27,25 @@ python app.py
 
 浏览器打开 http://127.0.0.1:7860 ，上传图片点击「识别」。
 
-- 默认使用 COCO 预训练模型 `yolo11n.pt`（80 类通用目标，首次运行自动下载）。
+推理后端按速度自动选择：
+
+| 后端 | 触发条件 | 单张耗时（约） |
+|------|----------|----------------|
+| TensorRT engine | 存在同名 `.engine` 且 TensorRT 可用 | ~10ms |
+| PyTorch GPU | 有 CUDA 且无 engine | ~30ms |
+| PyTorch CPU | 无 CUDA | ~300ms+ |
+
+- 默认模型为 COCO `yolo11n.pt`（80 类通用目标，首次运行自动下载）。
+- 构建 TensorRT engine（一次性，约 6 分钟，之后极速推理）：
+
+  ```bash
+  python build_engine.py          # 生成 yolo11n.engine
+  ```
+
+  构建前请确保 `tensorrt` 已安装且 `nvinfer_10.dll` 在 PATH 上，或设置
+  环境变量 `TENSORRT_BIN` 指向 TensorRT 的 bin/lib 目录。
 - 指定本地模型：`python app.py --model runs/train/delta_force/weights/best.pt`
+- 强制 CPU：`python app.py --device cpu`
 - 生成公网分享链接：`python app.py --share`
 
 ## 实时检测
@@ -63,6 +80,7 @@ xilin3/
 ├── app.py                  # Gradio 网页 Demo
 ├── detect.py               # 实时屏幕检测
 ├── train.py                # 训练脚本
+├── build_engine.py         # .pt → TensorRT engine（可选，极速推理）
 ├── tools/
 │   ├── screenshot.py       # 截图采集
 │   ├── label.py            # LabelImg 标注启动器
